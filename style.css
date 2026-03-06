@@ -1,0 +1,102 @@
+<?php
+require_once 'db.php';
+
+if (!isset($_GET['id'])) {
+    header("Location: index.php");
+    exit;
+}
+
+$id = $_GET['id'];
+$stmt = $pdo->prepare("SELECT * FROM posts WHERE id = ?");
+$stmt->execute([$id]);
+$post = $stmt->fetch();
+
+if (!$post) {
+    die("Post not found.");
+}
+
+$message = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $title = $_POST['title'];
+    $category = $_POST['category'];
+    $content = $_POST['content'];
+    $excerpt = substr(strip_tags($content), 0, 150) . '...';
+
+    if (empty($title) || empty($content)) {
+        $message = '<div class="alert alert-error">Please fill in all required fields.</div>';
+    } else {
+        $sql = "UPDATE posts SET title = ?, category = ?, content = ?, excerpt = ? WHERE id = ?";
+        $stmt = $pdo->prepare($sql);
+        if ($stmt->execute([$title, $category, $content, $excerpt, $id])) {
+            header("Location: post.php?id=$id");
+            exit;
+        } else {
+            $message = '<div class="alert alert-error">Error updating post.</div>';
+        }
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Post - BloggerClone</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <header>
+        <nav>
+            <a href="index.php" class="logo">🟠 BloggerClone</a>
+            <div class="nav-links">
+                <a href="index.php">Home</a>
+                <a href="post.php?id=<?= $post['id'] ?>">Back to Post</a>
+            </div>
+        </nav>
+    </header>
+
+    <div class="main-container">
+        <h1>Edit Post</h1>
+
+        <?= $message ?>
+
+        <form action="edit.php?id=<?= $post['id'] ?>" method="POST"
+            style="max-width: 800px; margin: 0 auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div class="form-group">
+                <label for="title">Post Title</label>
+                <input type="text" id="title" name="title" class="form-control" value="<?= e($post['title']) ?>"
+                    required>
+            </div>
+
+            <div class="form-group">
+                <label for="category">Category</label>
+                <select id="category" name="category" class="form-control">
+                    <?php
+                    $cats = ['Technology', 'Lifestyle', 'Business', 'Travel', 'Food', 'General'];
+                    foreach ($cats as $c) {
+                        $selected = ($c === $post['category']) ? 'selected' : '';
+                        echo "<option value='$c' $selected>$c</option>";
+                    }
+                    ?>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="content">Content</label>
+                <textarea id="content" name="content" class="form-control"><?= e($post['content']) ?></textarea>
+            </div>
+
+            <button type="submit" class="btn">Update Post</button>
+            <a href="post.php?id=<?= $post['id'] ?>"
+                style="margin-left: 1rem; color: #666; text-decoration: none;">Cancel</a>
+        </form>
+    </div>
+
+</body>
+
+</html>
